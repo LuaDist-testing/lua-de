@@ -5,12 +5,13 @@ local n = 5 -- number of dimensions
 
 local solver = DE.new(n, 40)
 for i = 1, n do solver.limits[i] = {-500, 500} end
+solver.cr = 0.5
+solver.f  = 0.8
 
 function solver.fitness(v) -- Schwefel's function
     local sum = 0
     
     for i = 1, n do
-        if v[i] < -500 or v[i] > 500 then return -math.huge end
         sum = sum - v[i] * math.sin(math.abs(v[i])^0.5)
     end
     

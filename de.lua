@@ -1,7 +1,7 @@
 --[[
 =================================================================
 *
-* Copyright (c) 2013 Lucas Hermann Negri
+* Copyright (c) 2013-2014 Lucas Hermann Negri
 *
 * Permission is hereby granted, free of charge, to any person
 * obtaining a copy of this software and associated documentation files
@@ -30,12 +30,16 @@ local DE = {}
 local DEmt = {__index = DE}
 
 ---
--- Creates a new differential evolution solver state.
+-- Creates a new differential evolution solver state. Parameters can be set by setting the
+-- keys 'cr', 'f', 'f_min' and 'f_max'.
 --
 -- @param ndim Number of dimensions
 -- @param npop Population size
 -- @return New solver instance
 function DE.new(ndim, npop)
+    assert(ndim >= 1)
+    assert(npop >= 3)
+
     local self = {}
     setmetatable(self, DEmt)
     
@@ -50,7 +54,8 @@ function DE.new(ndim, npop)
     
     -- parameters
     self.cr = 0.9
-    self.f  = nil -- nil to be random; 0.8 is also a good choice
+    self.f  = nil -- nil to be random between f_min and f_max; 0.8 is also a good choice
+    self.f_min, self.f_max = 0.4, 0.95
     
     return self
 end
@@ -76,13 +81,14 @@ end
 ---
 -- Initializes the solver state with a random population
 function DE:init()
-    self.pop  = {}
-    self.fit  = {}
-    self.best = 1
+    self.pop   = {}
+    self.fit   = {}
+    self.trial = {}
+    self.best  = 1
     
     for p = 1, self.npop do
         self.pop[p] = self:random_individual()
-        self.fit[p] = self.fitness(self.pop[p])
+        self.fit[p] = self.fitness(self.pop[p], self.ud)
         
         if self.fit[p] > self.fit[self.best] then
             self.best = p
@@ -91,23 +97,23 @@ function DE:init()
 end
 
 ---
--- Samples the population to selected the individual that will generate
+-- Samples the population to selecte the individual that will generate
 -- the offspring.
 --
 -- @return List with three (distinct) selected individuals
-function DE:sample()
-    local a = math.random(1, self.npop)
-    local b, c = a, a
-    
-    while b == a do
-        b = math.random(1, self.npop)
-    end
-    
-    while c == a or c == b do
-        c = math.random(1, self.npop)
-    end
+function DE:sample(i)
+    local a, b, c
+    repeat a = math.random(1, self.npop) until a ~= i
+    repeat b = math.random(1, self.npop) until b ~= a
+    repeat c = math.random(1, self.npop) until c ~= b
     
     return {self.pop[a], self.pop[b], self.pop[c]}
+end
+
+local function limit(v, a, b)
+    if v < a then return a end
+    if v > b then return b end
+    return v;
 end
 
 ---
@@ -118,10 +124,11 @@ end
 function DE:mutation(samples)
     local a, b, c = samples[1], samples[2], samples[3]
     local trial   = {}
-    local f       = self.f or rnd_range(0.5, 1.0)
+    local f       = self.f or rnd_range(self.f_min, self.f_max)
     
     for d = 1, self.ndim do
-        trial[d] = a[d] + f * (b[d] - c[d])
+        local l  = self.limits[d]
+        trial[d] = limit(a[d] + f * (b[d] - c[d]), l[1], l[2])
     end
     
     return trial
@@ -136,7 +143,8 @@ end
 function DE:crossover(x, trial)
     for d = 1, self.ndim do
         if math.random() > self.cr then
-            trial[d] = x[d]
+            local l  = self.limits[d]
+            trial[d] = limit(x[d], l[1], l[2])
         end
     end
 
@@ -146,18 +154,20 @@ end
 ---
 -- Performs one iteration step.
 function DE:step()
+    -- generate trial individuals
     for i = 1, self.npop do
-        local trial = self:crossover(
+        self.trial[i] = self:crossover(
             self.pop[i],
-            self:mutation( self:sample() )
+            self:mutation( self:sample(i) )
         )
-        
-        local trial_fit = self.fitness(trial)
-        
-        -- substitute iff the trial is better than x
+    end
+    
+    -- substitute iff the trial is beter than i
+    for i = 1, self.npop do
+        local trial_fit = self.fitness(self.trial[i], self.ud)
         if trial_fit > self.fit[i] then
-            self.pop[i] = trial
             self.fit[i] = trial_fit
+            self.pop[i] = self.trial[i]
             
             -- track the best one
             if trial_fit > self.fit[self.best] then self.best = i end

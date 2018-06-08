@@ -1,18 +1,18 @@
 -- This file was automatically generated for the LuaDist project.
 
 package = "lua-de"
-version = "0.2-1"
+version = "0.3-1"
 
 -- LuaDist source
 source = {
-  tag = "0.2-1",
+  tag = "0.3-1",
   url = "git://github.com/LuaDist-testing/lua-de.git"
 }
 -- Original source
 -- source = {
---     url = "https://bitbucket.org/lucashnegri/lua-de/get/v0.2.tar.gz",
---     md5 = "5c158eb4c36fc4620d070397b86e1c2f",
---     dir = "lucashnegri-lua-de-b02e6f91b62d",
+--     url = "https://bitbucket.org/lucashnegri/lua-de/get/v0.3.tar.gz",
+--     dir = "lucashnegri-lua-de-78583d9ed0f2",
+--     md5 = "8d038e0e6e2c49cc245f9c03d52c2aa0",
 -- }
 
 description = {
